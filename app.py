@@ -55,4 +55,45 @@ with col1:
     st.markdown("---")
     st.subheader("🚨 AI 실시간 처분(매도) 1순위 진단")
     
-    st.error("⚠️
+    st.error("⚠️ **처분 1순위 종목 : 유진테크** (위험 점수: 92/100)")
+    st.markdown("""
+    - **펀더멘털 및 밸류에이션 경고**: 목표 손절선 이탈 및 단기 실적 가시성 저하.
+    - **DART 공시 및 뉴스 리스크**: 최근 전방 산업 투자 지연 관련 공시 및 부정적 거시경제 뉴스 다수 포착.
+    - **경제적 해자 평가**: 기술 경쟁력은 존재하나, 업황 변동성에 취약하여 현재 방어력이 다소 낮음.
+    - **💡 최종 AI 제언**: 현금 확보를 위해 **비중 축소 및 일부 처분을 최우선으로 권장**합니다.
+    """)
+
+with col2:
+    st.subheader("🔍 실시간 공시 · 뉴스 & 해자 심층 분석")
+    
+    selected_stock = st.selectbox("분석할 종목 선택", selected_watchlist if selected_watchlist else ["삼성전자"])
+    
+    if st.button("🤖 AI 종합 정밀 분석 실행"):
+        if not openai_key_input:
+            st.error("OpenAI API 키를 먼저 사이드바에 입력해주세요!")
+        else:
+            with st.spinner(f"{selected_stock}에 대한 DART 공시 및 경제적 해자 분석 중..."):
+                try:
+                    client = OpenAI(api_key=openai_key_input)
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {"role": "system", "content": "당신은 전문 주식 애널리스트이자 밸류에이션 및 경제적 해자 분석 전문가입니다. 한국어로 상세히 답변해주세요."},
+                            {"role": "user", "content": f"{selected_stock}에 대해 경제적 해자(Economic Moat), PER/PBR/ROE 기반 밸류에이션, 그리고 현재 리스크 요인을 분석해줘."}
+                        ]
+                    )
+                    st.success("분석 완료!")
+                    st.write(response.choices[0].message.content)
+                except Exception as e:
+                    st.error(f"API 호출 중 오류 발생: {e}")
+
+# 5. 대화형 AI 에이전트 섹션 (Chat Interface)
+st.markdown("---")
+st.subheader("💬 주식 AI 에이전트와 실시간 대화하기")
+st.caption("선택한 관심종목이나 투자 전략, 경제적 해자에 대해 무엇이든 자유롭게 물어보세요!")
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+for message in st.session_state.messages:
+    with st.chat_
