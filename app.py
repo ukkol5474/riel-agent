@@ -30,15 +30,40 @@ if not openai_key_input:
     st.warning("⚠️ 사이드바에 OpenAI API Key를 입력해주셔야 AI 심층 분석 및 대화 기능이 정상 작동합니다.")
 
 # 3. 포트폴리오 및 밸류에이션 요약 데이터프레임 (관심종목 연동)
-watchlist_data = {
-    "종목명": selected_watchlist if selected_watchlist else ["삼성전자"],
-    "현재가(원)": [65000, 39000, 195000, 42000, 150000, 45000][:len(selected_watchlist or ["삼성전자"])],
-    "수익률(%)": [-7.1, -13.3, +8.3, -2.1, +5.0, -11.5][:len(selected_watchlist or ["삼성전자"])],
-    "PER": [14.2, 18.5, 22.1, 12.4, 8.9, 15.0][:len(selected_watchlist or ["삼성전자"])],
-    "PBR": [1.3, 1.8, 2.5, 1.1, 0.7, 1.2][:len(selected_watchlist or ["삼성전자"])],
-    "ROE(%)": [9.5, 11.2, 14.8, 10.2, 12.0, 8.5][:len(selected_watchlist or ["삼성전자"])],
+# 선택한 관심종목 수에 맞게 샘플 데이터 생성
+current_watchlist = selected_watchlist if selected_watchlist else ["삼성전자"]
+sample_data = {
+    "삼성전자": {"현재가": 65000, "수익률": -7.1, "PER": 14.2, "PBR": 1.3, "ROE": 9.5},
+    "유진테크": {"현재가": 39000, "수익률": -13.3, "PER": 18.5, "PBR": 1.8, "ROE": 11.2},
+    "SK하이닉스": {"현재가": 195000, "수익률": 8.3, "PER": 22.1, "PBR": 2.5, "ROE": 14.8},
+    "헥토이노베이션": {"현재가": 42000, "수익률": -2.1, "PER": 12.4, "PBR": 1.1, "ROE": 10.2},
+    "세아홀딩스": {"현재가": 150000, "수익률": 5.0, "PER": 8.9, "PBR": 0.7, "ROE": 12.0},
+    "더블유게임즈": {"현재가": 45000, "수익률": -11.5, "PER": 15.0, "PBR": 1.2, "ROE": 8.5},
 }
-df_portfolio = pd.DataFrame(watchlist_data)
+
+portfolio_list = []
+for stock in current_watchlist:
+    if stock in sample_data:
+        info = sample_data[stock]
+        portfolio_list.append({
+            "종목명": stock,
+            "현재가(원)": info["현재가"],
+            "수익률(%)": info["수익률"],
+            "PER": info["PER"],
+            "PBR": info["PBR"],
+            "ROE(%)": info["ROE"],
+        })
+    else:
+        portfolio_list.append({
+            "종목명": stock,
+            "현재가(원)": 0,
+            "수익률(%)": 0.0,
+            "PER": 0.0,
+            "PBR": 0.0,
+            "ROE(%)": 0.0,
+        })
+
+df_portfolio = pd.DataFrame(portfolio_list)
 
 # 4. 실시간 알람 체크 기능
 triggered_alerts = df_portfolio[df_portfolio["수익률(%)"] <= alert_threshold]
@@ -66,7 +91,7 @@ with col1:
 with col2:
     st.subheader("🔍 실시간 공시 · 뉴스 & 해자 심층 분석")
     
-    selected_stock = st.selectbox("분석할 종목 선택", selected_watchlist if selected_watchlist else ["삼성전자"])
+    selected_stock = st.selectbox("분석할 종목 선택", current_watchlist)
     
     if st.button("🤖 AI 종합 정밀 분석 실행"):
         if not openai_key_input:
@@ -92,8 +117,45 @@ st.markdown("---")
 st.subheader("💬 주식 AI 에이전트와 실시간 대화하기")
 st.caption("선택한 관심종목이나 투자 전략, 경제적 해자에 대해 무엇이든 자유롭게 물어보세요!")
 
+# 세션 상태 초기화
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# 이전 대화 내용 출력
 for message in st.session_state.messages:
-    with st.chat_
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# 사용자 입력 처리
+if prompt := st.chat_input("질문을 입력하세요 (예: 유진테크의 적정 주가 계산 방식은?)"):
+    # 1) 사용자 메시지 표시 및 저장
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # 2) AI 응답 생성 및 표시
+    if not openai_key_input:
+        with st.chat_message("assistant"):
+            st.warning("사이드바에 OpenAI API Key를 입력하셔야 답변을 생성할 수 있습니다.")
+    else:
+        with st.chat_message("assistant"):
+            with st.spinner("생각 중..."):
+                try:
+                    client = OpenAI(api_key=openai_key_input)
+                    
+                    # 대화 히스토리 포함하여 API 호출
+                    api_messages = [{"role": "system", "content": "당신은 가치투자 및 경제적 해자 분석 전문 주식 AI 에이전트입니다. 한국어로 정중하고 객관적으로 답변해주세요."}]
+                    for msg in st.session_state.messages:
+                        api_messages.append({"role": msg["role"], "content": msg["content"]})
+
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=api_messages
+                    )
+                    
+                    answer = response.choices[0].message.content
+                    st.markdown(answer)
+                    st.session_state.messages.append({"role": "assistant", "content": answer})
+                    
+                except Exception as e:
+                    st.error(f"오류가 발생했습니다: {e}")
