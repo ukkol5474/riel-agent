@@ -9,13 +9,17 @@ import datetime
 st.set_page_config(page_title="종합 주식 AI 분석 에이전트", layout="wide")
 
 st.title("🛡️ 리엘의 종합 주식 AI 분석 & 리스크 에이전트")
-st.caption("전자공시(DART), 실시간 주가, 구글 뉴스 감성 분석, 경제적 해자 및 밸류에이션을 통합 평가합니다.")
+st.caption("실시간 주가, 구글 뉴스 감성 분석, 경제적 해자 및 밸류에이션을 통합 평가합니다.")
+
+# Streamlit Secrets에서 안전하게 키 불러오기 시도 (없으면 빈 칸)
+secret_dart_key = st.secrets.get("DART_API_KEY", "") if "DART_API_KEY" in st.secrets else ""
+secret_openai_key = st.secrets.get("OPENAI_API_KEY", "") if "OPENAI_API_KEY" in st.secrets else ""
 
 # 2. 사이드바: API 키 및 설정 입력
 with st.sidebar:
     st.header("🔑 API 설정")
-    dart_key_input = st.text_input("DART API Key", type="password", placeholder="다트 오픈API 키 입력")
-    openai_key_input = st.text_input("OpenAI API Key", type="password", placeholder="OpenAI API 키 입력")
+    dart_key_input = st.text_input("DART API Key", value=secret_dart_key, type="password", placeholder="다트 오픈API 키 입력")
+    openai_key_input = st.text_input("OpenAI API Key", value=secret_openai_key, type="password", placeholder="OpenAI API 키 입력")
     
     st.markdown("---")
     st.markdown("### 📌 관심종목 및 포트폴리오 설정")
@@ -29,7 +33,7 @@ with st.sidebar:
 
 # 메인 화면 구성
 if not openai_key_input:
-    st.warning("⚠️ 사이드바에 OpenAI API Key를 입력해주셔야 AI 심층 분석 및 채팅 에이전트 기능이 정상 작동합니다.")
+    st.warning("⚠️ 사이드바에 OpenAI API Key를 입력해주셨거나 Secrets 설정이 필요합니다. AI 심층 분석 및 채팅 에이전트 기능 사용을 위해 확인해주세요.")
 
 # 3. 포트폴리오 및 밸류에이션 요약 데이터프레임
 watchlist_data = {
@@ -61,7 +65,7 @@ with col1:
     st.markdown("""
     - **펀더멘털 및 밸류에이션 경고**: 목표 손절선(-10%) 이탈 및 단기 실적 가시성 저하.
     - **DART 공시 및 뉴스 리스크**: 최근 전방 산업 투자 지연 관련 공시 및 부정적 거시경제 뉴스 다수 포착.
-    - **경제적 해자 평가**: 기술 경쟁력은 존재하나, 업황 변동성에 취약하여 현재 매크로 상황에서 방어력이 다소 낮음.
+    - **경제적 해자 평가**: 기술 경쟁력은 존재하나, 업황 변동성에 취약하여 현재 방어력이 다소 낮음.
     - **💡 최종 AI 제언**: 현금 확보를 위해 **비중 축소 및 일부 처분을 최우선으로 권장**합니다.
     """)
 
@@ -72,7 +76,7 @@ with col2:
     
     if st.button("🤖 DART + AI 종합 정밀 분석 실행"):
         if not openai_key_input:
-            st.error("OpenAI API 키를 먼저 입력해주세요!")
+            st.error("OpenAI API 키를 먼저 입력하거나 Secrets에 설정해주세요!")
         else:
             with st.spinner(f"[{selected_stock}] DART 전자공시 API 조회, 구글 뉴스 검색 및 분석 중..."):
                 try:
@@ -80,7 +84,6 @@ with col2:
                     dart_summary = "DART API 키 미입력 (기본 공시 데이터 모드로 분석)"
                     if dart_key_input:
                         try:
-                            # DART 검색 (최근 공시 목록 API)
                             today = datetime.datetime.now().strftime("%Y%m%d")
                             three_months_ago = (datetime.datetime.now() - datetime.timedelta(days=90)).strftime("%Y%m%d")
                             
@@ -105,7 +108,7 @@ with col2:
 
                     sources_text = "\n".join(google_news)
 
-                    # 3. GPT-4o 프롬프트 구성 (DART 공시 반영)
+                    # 3. GPT-4o 프롬프트 구성
                     prompt = f"""
                     당신은 냉철하고 객관적인 수석 주식 애널리스트이자 AI 에이전트입니다.
                     종목 '{selected_stock}'에 대해 아래 실시간 데이터에 맞춰 철저하게 분석해주세요.
@@ -167,7 +170,7 @@ if prompt := st.chat_input("예: 유진테크의 DART 공시 리스크를 방어
 
     with st.chat_message("assistant"):
         if not openai_key_input:
-            response_text = "AI와의 대화를 위해 사이드바에 OpenAI API 키를 입력해주세요!"
+            response_text = "AI와의 대화를 위해 사이드바에 OpenAI API 키를 입력하거나 Secrets를 설정해주세요!"
             st.markdown(response_text)
         else:
             with st.spinner("AI 에이전트가 답변을 생각하는 중입니다..."):
