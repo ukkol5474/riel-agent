@@ -1,6 +1,7 @@
 streamlit
 pandas
-OpenDartReader
 openai
 googlesearch-python
+requests
+
 
